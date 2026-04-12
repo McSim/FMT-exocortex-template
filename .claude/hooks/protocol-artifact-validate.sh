@@ -6,10 +6,11 @@
 # Read-only: only returns JSON, does not modify files.
 #
 # Validated artifacts:
-#   - DayPlan: 11 required sections (day-open protocol)
+#   - DayPlan: 11 required sections + collapsible + non-empty key sections + carry-over
 #   - DayClose: итоги, carry-over (day-close protocol) [future]
 #
 # Parameterized: sections list is a variable, not hardcoded per format.
+# Ф3 WP-229: добавлены проверки структуры (collapsible, непустые секции, мультипликатор, carry-over)
 
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -30,7 +31,7 @@ fi
 # Check if we're in DS-my-strategy (protocol governance repo)
 if ! echo "$TOOL_INPUT" | grep -q 'DayPlan\|day-open\|day-close\|WeekPlan'; then
   # Also check pwd context — look for staged DayPlan files
-  STAGED=$(cd ${IWE_GOVERNANCE_REPO:-~/IWE/DS-my-strategy} 2>/dev/null && git diff --cached --name-only 2>/dev/null || echo "")
+  STAGED=$(cd ~/IWE/DS-my-strategy 2>/dev/null && git diff --cached --name-only 2>/dev/null || echo "")
   if ! echo "$STAGED" | grep -qE 'DayPlan|WeekPlan'; then
     echo '{}'
     exit 0
@@ -38,7 +39,7 @@ if ! echo "$TOOL_INPUT" | grep -q 'DayPlan\|day-open\|day-close\|WeekPlan'; then
 fi
 
 # --- DayPlan Validation ---
-DAYPLAN=$(ls ${IWE_GOVERNANCE_REPO:-~/IWE/DS-my-strategy}/current/DayPlan\ *.md 2>/dev/null | head -1)
+DAYPLAN=$(ls ~/IWE/DS-my-strategy/current/DayPlan\ *.md 2>/dev/null | head -1)
 
 if [ -z "$DAYPLAN" ]; then
   echo '{}'
@@ -70,14 +71,50 @@ done
 # Check mandatory format elements
 ERRORS=()
 
-# Mandatory check line (WP-7 + content WP)
+# --- Ф3 Check 1: collapsible <details> блоки ---
+DETAILS_COUNT=$(grep -c '<details' "$DAYPLAN" 2>/dev/null || echo 0)
+if [ "$DETAILS_COUNT" -lt 3 ]; then
+  ERRORS+=("Collapsible секции (<details>) < 3 найдено: $DETAILS_COUNT. DayPlan должен иметь collapsible-структуру")
+fi
+
+# --- Ф3 Check 2: непустые обязательные секции ---
+# Календарь: должна содержать хотя бы одну строку с | (таблица) или "нет событий"
+CALENDAR_CONTENT=$(awk '/Календарь/,/^<\/details>/' "$DAYPLAN" 2>/dev/null | wc -l || echo 0)
+if [ "$CALENDAR_CONTENT" -lt 3 ]; then
+  ERRORS+=("Секция 'Календарь' пустая или слишком короткая (${CALENDAR_CONTENT} строк)")
+fi
+
+# Здоровье бота (QA): должна содержать числа или "нет данных"
+if ! awk '/Здоровье бота/,/^<\/details>/' "$DAYPLAN" 2>/dev/null | grep -qE '\|[[:space:]]*[0-9]|нет данных'; then
+  ERRORS+=("Секция 'Здоровье бота' не содержит данных (таблица с числами или 'нет данных')")
+fi
+
+# Scout: должна содержать хотя бы упоминание находок или "нет находок"
+if ! awk '/Наработки Scout/,/^<\/details>/' "$DAYPLAN" 2>/dev/null | grep -qE 'наход|capture|статус|нет|find'; then
+  ERRORS+=("Секция 'Наработки Scout' пустая")
+fi
+
+# --- Ф3 Check 3: формат мультипликатора ---
+if ! grep -qE "~[0-9]+\.?[0-9]*x" "$DAYPLAN"; then
+  ERRORS+=("Мультипликатор не найден — нужен формат '~N.Nx' в строке бюджета")
+fi
+
+# --- Ф3 Check 4 (legacy): mandatory check и бюджет ---
 if ! grep -qi "mandatory" "$DAYPLAN"; then
   ERRORS+=("Mandatory check (WP-7 + контентный РП) не найден")
 fi
 
-# Budget format
 if ! grep -qE "~[0-9]+\.?[0-9]*h РП" "$DAYPLAN"; then
   ERRORS+=("Бюджет дня не в формате '~Xh РП / ~Yh физ'")
+fi
+
+# --- Ф3 Check 5: Carry-over цитата (если есть предыдущий DayPlan) ---
+PREV_DAYPLAN=$(ls ~/IWE/DS-my-strategy/current/DayPlan\ *.md 2>/dev/null | sort | tail -2 | head -1)
+if [ -n "$PREV_DAYPLAN" ] && [ "$PREV_DAYPLAN" != "$DAYPLAN" ]; then
+  # Предыдущий DayPlan существует — текущий должен содержать Carry-over
+  if ! grep -qiE 'carry.over|carry_over' "$DAYPLAN"; then
+    ERRORS+=("Carry-over цитата из предыдущего Day Close отсутствует (предыдущий DayPlan: $(basename "$PREV_DAYPLAN"))")
+  fi
 fi
 
 # Report results
@@ -89,15 +126,15 @@ if [ ${#MISSING[@]} -gt 0 ] || [ ${#ERRORS[@]} -gt 0 ]; then
 
   MSG="⛔ DAYPLAN VALIDATION FAILED."
   [ ${#MISSING[@]} -gt 0 ] && MSG="$MSG Пропущены секции (${#MISSING[@]}): $MISSING_STR."
-  [ ${#ERRORS[@]} -gt 0 ] && MSG="$MSG Ошибки формата: $ERRORS_STR."
-  MSG="$MSG Исправь DayPlan перед коммитом. Не коммить невалидный артефакт."
+  [ ${#ERRORS[@]} -gt 0 ] && MSG="$MSG Ошибки формата/структуры: $ERRORS_STR."
+  MSG="$MSG Исправь DayPlan перед коммитом."
 
   cat <<EOF
 {"decision": "block", "reason": "$MSG"}
 EOF
 else
   cat <<'EOF'
-{"additionalContext": "✅ DayPlan прошёл валидацию: 11/11 секций, mandatory check, бюджет в формате."}
+{"additionalContext": "✅ DayPlan прошёл валидацию: секции, collapsible, непустые блоки, мультипликатор, carry-over."}
 EOF
 fi
 
