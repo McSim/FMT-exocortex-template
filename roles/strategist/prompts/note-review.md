@@ -3,12 +3,12 @@
 
 ## Контекст
 
-- **Заметки:** {{WORKSPACE_DIR}}/DS-strategy/inbox/[fleeting-notes.md](https://github.com/{{GITHUB_USER}}/DS-strategy/blob/main/inbox/fleeting-notes.md)
-- **НЭП:** {{WORKSPACE_DIR}}/DS-strategy/docs/Dissatisfactions.md
-- **Стратегия:** {{WORKSPACE_DIR}}/DS-strategy/docs/Strategy.md
-- **План недели:** {{WORKSPACE_DIR}}/DS-strategy/current/WeekPlan W*.md
-- **Inbox Экстрактора:** {{WORKSPACE_DIR}}/DS-strategy/inbox/captures.md
-- **MEMORY:** ~/.claude/projects/{{CLAUDE_PROJECT_SLUG}}/memory/MEMORY.md
+- **Заметки:** /home/mcsim/IWE/DS-strategy/inbox/[fleeting-notes.md](https://github.com/McSim/DS-strategy/blob/main/inbox/fleeting-notes.md)
+- **НЭП:** /home/mcsim/IWE/DS-strategy/docs/Dissatisfactions.md
+- **Стратегия:** /home/mcsim/IWE/DS-strategy/docs/Strategy.md
+- **План недели:** /home/mcsim/IWE/DS-strategy/current/WeekPlan W*.md
+- **Inbox Экстрактора:** /home/mcsim/IWE/DS-strategy/inbox/captures.md
+- **MEMORY:** ~/.claude/projects/-home-mcsim-IWE/memory/MEMORY.md
 
 ## Предусловие
 
@@ -62,6 +62,7 @@
 | 5 | **Черновик** | Зерно для поста/статьи, рефлексия с концептами | → рекомендация в конец WeekPlan (секция «Предложения Note-Review»). Файл НЕ создаётся — только после согласования |
 | 6 | **Личные данные** | Контакт, телефон, email, токен, аккаунт, реквизиты | → DS-strategy/personal/*.md |
 | 7 | **Шум** | Тест, дубль, случайное, ссылка без контекста, уже сделано / решено | → зачеркнуть ~~текст~~ |
+| 8 | **Новость/мнение** | Содержит `#мнение:` — факт из внешнего мира + позиция автора | → `DS-strategy/inbox/news-opinions.md` (строка: `**YYYY-MM-DD** \| [тема] \| мнение`) |
 
 **Правила классификации:**
 - Если НЭП + задача → приоритет НЭП (эмоция важнее действия)
@@ -73,7 +74,7 @@
 - **Личные данные → personal/:** контакт → `personal/contacts.md`, аккаунт/URL → `personal/accounts.md`, токен/пароль → `personal/secrets.md`, прочее → `personal/reference.md`
 
 **Проверка актуальности (обязательно перед классификацией):**
-- Сверь заметку с коммитами за сегодня (`git log --since="00:00" --all --oneline` по всем {{WORKSPACE_DIR}}/ репо) и текущим WeekPlan
+- Сверь заметку с коммитами за сегодня (`git log --since="00:00" --all --oneline` по всем /home/mcsim/IWE/ репо) и текущим WeekPlan
 - Если задача из заметки **уже сделана** (есть коммит или РП done) → Шум (зачеркнуть), не тянуть в план
 - Если проблема из заметки **уже решена** → Шум
 - Если заметка ссылается на ситуацию, которая **изменилась** за день → оценить с учётом нового контекста
