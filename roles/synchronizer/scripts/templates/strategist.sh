@@ -27,10 +27,11 @@ table_to_list() {
     local file="$1"
     local section="$2"
 
-    sed -n "/^## ${section}/,/^---/p" "$file" \
+    # Support both "## Section" and "<summary><b>Section</b></summary>" formats
+    sed -n "/^## ${section}\|<summary><b>${section}<\/b><\/summary>/,/^---\|^<\/details>/p" "$file" \
         | grep '^|' \
         | tail -n +3 \
-        | while IFS='|' read -r _ num rp budget priority status _rest; do
+        | while IFS='|' read -r _ light num rp budget status _rest; do
             num=$(echo "$num" | xargs)
             rp=$(echo "$rp" | xargs | sed 's/\*\*//g')
             budget=$(echo "$budget" | xargs)
@@ -43,7 +44,7 @@ table_to_list() {
                 *pending*) icon="⬜" ;;
             esac
 
-            printf "%s #%s %s (%s)\n" "$icon" "$num" "$rp" "$budget"
+            printf "%s %s (%s)\n" "$icon" "$rp" "$budget"
         done
 }
 
@@ -56,7 +57,9 @@ get_github_link() {
     if [ -n "$repo_url" ]; then
         local encoded_name
         encoded_name=$(printf '%s' "$filename" | python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.stdin.read().strip()))')
-        printf '\n\n<a href="%s/blob/main/current/%s">📄 Открыть в GitHub</a>' "$repo_url" "$encoded_name"
+        local branch
+        branch=$(cd "$STRATEGY_REPO_DIR" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "master")
+        printf '\n\n<a href="%s/blob/%s/current/%s">📄 Открыть в GitHub</a>' "$repo_url" "$branch" "$encoded_name"
     fi
 }
 
