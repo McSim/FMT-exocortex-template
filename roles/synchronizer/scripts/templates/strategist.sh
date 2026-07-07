@@ -38,7 +38,10 @@ table_to_list() {
     # weekplan (default): # | РП | Бюджет | Статус | Дедлайн | Репо
     local format="${3:-weekplan}"
 
-    sed -n -E "/^## ${section}|<summary>.*${section}/,/^---|^<\/details>/p" "$file" \
+    # v3 (2026-07-07): DayPlan использует плоские ## заголовки (<details> убраны).
+    # Диапазон: от "## Секция" до следующего "## " или конца файла.
+    # Колонки: 🚦 | # | РП | h | Статус | Результат
+    sed -n -E "/^## ${section}$/,/^## /p" "$file" \
         | grep '^|' \
         | tail -n +3 \
         | while IFS='|' read -r _ f1 f2 f3 f4 f5 f6 _rest; do
@@ -54,7 +57,7 @@ table_to_list() {
             status=$(echo "$status" | xargs)
 
             local icon="⬜"
-            case "$status" in
+            case "$wp_status" in
                 *done*|*"✅"*) icon="✅" ;;
                 *in_progress*|*in.progress*) icon="🔄" ;;
                 *pending*) icon="⬜" ;;
